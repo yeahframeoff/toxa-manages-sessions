@@ -14,7 +14,6 @@
 
 class User
 {
-
     private $_attrs = [
         'login' => '',
         'password' => '',
@@ -23,7 +22,6 @@ class User
         'yearOfBirth' => '',
     ];
 
-    private static $_user = null;
     public function __get($name)
     {
         return isset($this->_attrs[$name]) ? $this->_attrs[$name] : '';
@@ -34,8 +32,7 @@ class User
         $this->_attrs[$name] = $value;
     }
 
-
-    private function __construct(){}
+    private static $_user = null;
 
     public static function get()
     {
@@ -44,10 +41,13 @@ class User
             session_start();
             self::$_user = new User();
 
-            if (isset ($_SESSION['user']))
-                self::$_user->_attrs = $_SESSION['user'];
-            elseif (isset($_POST['user']))
-                self::$_user->_attrs = $_POST['user'];
+            if (isset($_SESSION['logged']) && $_SESSION['logged'])
+                self::$_user->findAndAssign();
+            else
+                if (isset($_POST['user']))
+                    self::$_user->_attrs = $_POST['user'];
+                elseif (isset ($_SESSION['user']))
+                    self::$_user->_attrs = $_SESSION['user'];
         }
         return self::$_user;
     }
@@ -57,7 +57,10 @@ class User
         $this->login = $login;
 
         if (!$this->findAndAssign())
+        {
+            $this->logOut();
             die('User not found');
+        }
         else
             if ($this->password == $password)
             {
@@ -65,12 +68,16 @@ class User
                 return true;
             }
             else
+            {
+                $this->logOut();
                 return false;
+            }
     }
 
     public function logOut()
     {
         $_SESSION = [];
+        $this->_attrs = [];
         session_destroy();
     }
 
@@ -86,12 +93,13 @@ class User
 
     private function getDbConnection($dyeMessage = null)
     {
-        if ($this->$_conn === null)
+        if ($this->_conn === null)
         {
-            $this->$_conn = new mysqli('localhost', 'root', '', 'session_lesson');
-            if ($this->$_conn->connect_error)
+            $this->_conn = new mysqli('localhost', 'root', '', 'session_lesson');
+            //$this->_conn = mysqli_connect('localhost', 'root', '', 'session_lesson');
+            if ($this->_conn->connect_error)
                 die ($dyeMessage === null ?
-                    'Connect Error (' . $this->$_conn->connect_errno . ') ' . $this->$_conn->connect_error :
+                    'Connect Error (' . $this->_conn->connect_errno . ') ' . $this->_conn->connect_error :
                     $dyeMessage);
         }
         return $this->_conn;
@@ -100,7 +108,10 @@ class User
     public function __destruct()
     {
         if ($this->_conn !== null)
+        {
             $this->_conn->close();
+            $this->_conn = null;
+        }
     }
 
     private function find($assign = false)
@@ -108,10 +119,11 @@ class User
         $login = $this->login;
         $conn = $this->getDbConnection();
         $query = "SELECT * FROM `users` WHERE `login` LIKE '$login' LIMIT 1";
-        $conn->query($query);
+        //$conn->query($query);
+        //$result = $conn->use_result();
+        $result = $conn->query($query);
         if ($conn->error)
             die("Couldn't load data from to database");
-        $result = $conn->use_result();
         if ($result->num_rows === 0)
             return false;
         else
@@ -121,6 +133,8 @@ class User
             foreach($data as $key => $value)
                 $attrs[self::uscoreToCamel($key)] = $value;
 
+            print_r($attrs);
+            print_r($_SESSION);
             if ($assign == true)
                 $this->_attrs = $attrs;
             return true;
@@ -167,7 +181,7 @@ class User
 
     public function isGuest()
     {
-        return !(isset($_SESSION['logged']) && $_SESSION['logged']);
+        return !(isset($_SESSION['logged']) && $_SESSION['logged'] == true);
     }
 
     private static function camelToUscore($camelString)
@@ -188,11 +202,15 @@ class User
     {
         $res = '';
         $chars = str_split($uscoreString);
+        $flag = false;
         foreach ($chars as $sym)
         {
-            if ($sym == '_')
-                $res .= strtoupper(next($chars));
-            else
+            if ($flag)
+            {
+                $res .= strtoupper($sym);
+                $flag = false;
+            }
+            elseif (!($flag = $sym == '_'))
                 $res .= $sym;
         }
         return $res;
