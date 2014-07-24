@@ -41,12 +41,7 @@ class User
             session_start();
             self::$_user = new User();
 
-            if (isset($_SESSION['logged']) && $_SESSION['logged'])
-                self::$_user->findAndAssign();
-            else
-                if (isset($_POST['user']))
-                    self::$_user->_attrs = $_POST['user'];
-                elseif (isset ($_SESSION['user']))
+            if (isset ($_SESSION['user']))
                     self::$_user->_attrs = $_SESSION['user'];
         }
         return self::$_user;
@@ -59,7 +54,7 @@ class User
         if (!$this->findAndAssign())
         {
             $this->logOut();
-            die('User not found');
+            return false;
         }
         else
             if ($this->password == $password)
@@ -96,13 +91,17 @@ class User
         if ($this->_conn === null)
         {
             $this->_conn = new mysqli('localhost', 'root', '', 'session_lesson');
-            //$this->_conn = mysqli_connect('localhost', 'root', '', 'session_lesson');
             if ($this->_conn->connect_error)
                 die ($dyeMessage === null ?
                     'Connect Error (' . $this->_conn->connect_errno . ') ' . $this->_conn->connect_error :
                     $dyeMessage);
         }
         return $this->_conn;
+    }
+
+    public function set(array $attrs)
+    {
+        $this->_attrs = $attrs;
     }
 
     public function __destruct()
@@ -112,6 +111,7 @@ class User
             $this->_conn->close();
             $this->_conn = null;
         }
+        $_SESSION['user'] = $this->_attrs;
     }
 
     private function find($assign = false)
@@ -119,8 +119,6 @@ class User
         $login = $this->login;
         $conn = $this->getDbConnection();
         $query = "SELECT * FROM `users` WHERE `login` LIKE '$login' LIMIT 1";
-        //$conn->query($query);
-        //$result = $conn->use_result();
         $result = $conn->query($query);
         if ($conn->error)
             die("Couldn't load data from to database");
@@ -133,8 +131,6 @@ class User
             foreach($data as $key => $value)
                 $attrs[self::uscoreToCamel($key)] = $value;
 
-            print_r($attrs);
-            print_r($_SESSION);
             if ($assign == true)
                 $this->_attrs = $attrs;
             return true;
@@ -174,9 +170,7 @@ class User
 
     public function preSave()
     {
-        //session_start();
         $_SESSION['user'] = $this->_attrs;
-        //session_commit();
     }
 
     public function isGuest()

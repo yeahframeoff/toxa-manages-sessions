@@ -1,4 +1,7 @@
 <?
+
+function isTrue($var) {return isset($var) && $var == true;}
+
 require_once 'User.php';
 $user = User::get();
 
@@ -6,39 +9,50 @@ if ($user->isGuest())
 {
     $contentName = 'startPage';
     $user->preSave();
-    if (isset($_POST['reg_submit']) && $_POST['reg_submit'])
-    {
-        $user->save();
-        $user->logIn($_POST['user']['login'], $_POST['user']['password']);
 
-        $contentName = 'startPage';
-    }
-    if (isset($_POST['login_submit']) && $_POST['login_submit'])
+    if (isTrue($_POST['login_submit']))
     {
         if ($user->logIn($_POST['user']['login'], $_POST['user']['password']))
             $contentName = 'userPage';
         else
-            $contentName = 'startPage';
+            $contentName = 'startPageWrongPassword';
+    }
+
+    if (isTrue($_POST['ajax']))
+        $user->set($_POST['user']);
+
+    if (isTrue($_POST['reg_submit']))
+    {
+        $user->set($_POST['user']);
+        $user->save();
+        $user->logIn($_POST['user']['login'], $_POST['user']['password']);
+
+        $contentName = 'userPage';
     }
 }
 else
 {
-    if (isset($_POST['saveupdate_submit']) && $_POST['saveupdate_submit'])
+    if (isTrue($_POST['saveupdate_submit']))
     {
+        $user->set($_POST['user']);
         $user->save();
         $contentName = 'userPage';
     }
-    if (isset($_POST['update_submit']) && $_POST['update_submit'])
+    if (isTrue($_POST['update_submit']))
     {
         $contentName = 'updatePage';
     }
-    if (isset($_POST['logout_submit']) && $_POST['logout_submit'])
+    if (isTrue($_POST['logout_submit']))
     {
         $user->logOut();
         $contentName = 'startPage';
     }
+    if (isTrue($_POST['ajax']))
+    {
+        $user->set($_POST['user']);
+    }
 }
 
-if (!isset($_POST['ajax']))
+if (!isTrue($_POST['ajax']))
     include 'layout.php';
 ?>

@@ -52,13 +52,19 @@
 </head>
 <body>
 <div id="content">
-    <? if ($contentName == 'startPage'): ?>
+    <? if ($contentName == 'startPage' || $contentName == 'startPageWrongPassword'): ?>
+
+        <? if ($contentName == 'startPageWrongPassword'): ?>
+            <h2>Wrong login or password</h2>
+        <?endif;?>
+
     <h1>Log In</h1>
     <? include 'login_form.php';?>
     <h1>or Register</h1>
     <? include 'reg_form.php'; ?>
 
     <? elseif ($contentName == 'updatePage'): ?>
+
     <h1>Update</h1>
     <? include 'reg_form.php'; ?>
 
